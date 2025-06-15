@@ -1,156 +1,91 @@
 // js/audio.js
 
 let audioContext;
+let oscillator;
 let masterGain;
+let envelope; // This is the crucial new part: a dedicated gain node for volume control
 
-// This function must be called by a user interaction (e.g., a click)
+const LOW_FREQ = 220;
+const HIGH_FREQ = 440;
+const FADE_TIME = 0.5; // Smooth fade duration for all volume changes
+
 export function initAudio() {
-    if (audioContext) return; // Already initialized
-
+    if (audioContext) return;
     try {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         masterGain = audioContext.createGain();
-        masterGain.gain.setValueAtTime(0.5, audioContext.currentTime); // Set master volume to 50%
+        masterGain.gain.setValueAtTime(0.3, audioContext.currentTime);
         masterGain.connect(audioContext.destination);
     } catch (e) {
         console.error("Web Audio API is not supported in this browser");
     }
 }
 
-// A helper function to play a single beep
-function playBeep(frequency, duration = 0.2) {
-    if (!audioContext) return;
+export function startAudio() {
+    // FIX for "Second run doesn't work": Always create a fresh oscillator and envelope.
+    if (oscillator) {
+        // If a previous oscillator exists, force stop it before creating a new one.
+        stopAudio();
+    }
     
-    // Resume the context if it was suspended (common in modern browsers)
-    if (audioContext.state === 'suspended') {
-        audioContext.resume();
-    }
+    if (!audioContext) return;
+    if (audioContext.state === 'suspended') audioContext.resume();
 
-    // Create an Oscillator node (the sound wave)
-    const oscillator = audioContext.createOscillator();
-    oscillator.type = 'sine'; // A smooth, clean tone
-    oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+    // 1. Create the sound source (oscillator)
+    oscillator = audioContext.createOscillator();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(LOW_FREQ, audioContext.currentTime);
 
-    // Create a Gain node to control the volume envelope (fade out)
-    const gainNode = audioContext.createGain();
-    gainNode.gain.setValueAtTime(1, audioContext.currentTime);
-    // Fade the sound out smoothly to avoid a "click"
-    gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + duration);
+    // 2. Create the volume envelope
+    envelope = audioContext.createGain();
+    envelope.gain.setValueAtTime(0, audioContext.currentTime); // Start silent
 
-    // Connect the nodes: Oscillator -> Gain -> Master Volume -> Speakers
-    oscillator.connect(gainNode);
-    gainNode.connect(masterGain);
-
-    // Start and stop the sound
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + duration);
+    // 3. Connect the audio graph: oscillator -> envelope -> master volume -> speakers
+    oscillator.connect(envelope);
+    envelope.connect(masterGain);
+    
+    oscillator.start();
 }
 
-// --- Public functions to be called by the engine ---
+export function stopAudio() {
+    if (!envelope || !oscillator) return;
 
-export function playInhaleSound() {
-    // A higher, uplifting pitch for inhaling
-    playBeep(440.00); // A4 note
+    // Fade out the envelope, then stop the oscillator completely.
+    envelope.gain.linearRampToValueAtTime(0.0001, audioContext.currentTime + FADE_TIME);
+    oscillator.stop(audioContext.currentTime + FADE_TIME);
+    
+    // Mark as cleaned up
+    oscillator = null;
+    envelope = null;
 }
 
-export function playExhaleSound() {
-    // A lower, grounding pitch for exhaling
-    playBeep(329.63); // E4 note
+// FIX for "Pause button" and "Hold sound" issues: Smoothly mute the sound
+export function muteAudio() {
+    if (!envelope) return;
+    envelope.gain.linearRampToValueAtTime(0.0001, audioContext.currentTime + FADE_TIME);
 }
 
-// Audio management for the Sleep Breathwork app
-class AudioManager {
-    constructor() {
-        this.audioContext = null;
-        this.audioBuffers = new Map();
-        this.isInitialized = false;
-        this.volume = 0.5;
-    }
-
-    // Initialize audio context (must be called after user interaction)
-    async initialize() {
-        try {
-            if (this.isInitialized) return;
-            
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            await this.audioContext.resume();
-            this.isInitialized = true;
-            console.log('Audio context initialized successfully');
-        } catch (error) {
-            console.error('Failed to initialize audio context:', error);
-            throw error;
-        }
-    }
-
-    // Load and cache an audio file
-    async loadSound(name, filePath) {
-        try {
-            if (!this.isInitialized) {
-                throw new Error('Audio context not initialized. Call initialize() first.');
-            }
-
-            const response = await fetch(filePath);
-            if (!response.ok) {
-                throw new Error(`Failed to load audio file: ${response.statusText}`);
-            }
-
-            const arrayBuffer = await response.arrayBuffer();
-            const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-            this.audioBuffers.set(name, audioBuffer);
-            console.log(`Audio file ${name} loaded successfully`);
-        } catch (error) {
-            console.error(`Error loading sound ${name}:`, error);
-            throw error;
-        }
-    }
-
-    // Play a loaded sound
-    playSound(name) {
-        try {
-            if (!this.isInitialized) {
-                throw new Error('Audio context not initialized. Call initialize() first.');
-            }
-
-            const buffer = this.audioBuffers.get(name);
-            if (!buffer) {
-                throw new Error(`Sound ${name} not loaded. Call loadSound() first.`);
-            }
-
-            const source = this.audioContext.createBufferSource();
-            const gainNode = this.audioContext.createGain();
-            
-            source.buffer = buffer;
-            gainNode.gain.value = this.volume;
-            
-            source.connect(gainNode);
-            gainNode.connect(this.audioContext.destination);
-            
-            source.start(0);
-            return { source, gainNode };
-        } catch (error) {
-            console.error(`Error playing sound ${name}:`, error);
-            throw error;
-        }
-    }
-
-    // Set volume (0.0 to 1.0)
-    setVolume(value) {
-        if (value < 0 || value > 1) {
-            throw new Error('Volume must be between 0 and 1');
-        }
-        this.volume = value;
-    }
-
-    // Stop all audio playback
-    stopAll() {
-        if (this.audioContext) {
-            this.audioContext.close();
-            this.audioContext = null;
-            this.isInitialized = false;
-            this.audioBuffers.clear();
-        }
-    }
+// FIX for "Pause button" and "Hold sound" issues: Smoothly unmute the sound
+export function unmuteAudio() {
+    if (!envelope) return;
+    envelope.gain.linearRampToValueAtTime(1, audioContext.currentTime + FADE_TIME);
 }
 
-// Export the AudioManager class
-export default AudioManager;
+// This function now correctly handles all phases
+export function updateAudioPhase(phase) {
+    if (!oscillator) return;
+
+    const freqParam = oscillator.frequency;
+    const now = audioContext.currentTime;
+    const duration = phase.duration;
+
+    if (phase.name.includes('In')) {
+        unmuteAudio(); // Fade sound in
+        freqParam.linearRampToValueAtTime(HIGH_FREQ, now + duration);
+    } else if (phase.name.includes('Out')) {
+        unmuteAudio(); // Fade sound in
+        freqParam.linearRampToValueAtTime(LOW_FREQ, now + duration);
+    } else if (phase.name.includes('Hold')) {
+        muteAudio(); // Fade sound out for the hold phase
+    }
+}

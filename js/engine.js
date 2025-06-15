@@ -1,14 +1,12 @@
 import { state } from './state.js';
 import * as ui from './ui.js';
-import * as audio from './audio.js'; // The audio module is correct, we just need to call it properly.
+import * as audio from './audio.js';
 
 let currentTechniqueInstance = null;
-let lastPhaseName = ''; // Used to track phase changes for sound triggers
+let lastPhaseName = '';
 
 function loop(timestamp) {
-    // === FIX: This is now the ONLY loop function ===
     if (!state.isRunning) {
-        // If stopped, cancel the loop entirely.
         if (state.animationFrameId) {
             cancelAnimationFrame(state.animationFrameId);
             state.animationFrameId = null;
@@ -17,7 +15,6 @@ function loop(timestamp) {
     }
 
     if (state.isPaused) {
-        // If paused, just keep the loop alive but do nothing.
         state.lastTimestamp = timestamp;
         state.animationFrameId = requestAnimationFrame(loop);
         return;
@@ -28,20 +25,13 @@ function loop(timestamp) {
     const deltaTime = (timestamp - state.lastTimestamp) / 1000;
     state.lastTimestamp = timestamp;
 
-    // The core logic remains the same
     currentTechniqueInstance.update(deltaTime);
     const { phase, progress, cycleCount } = currentTechniqueInstance.getUIState();
 
-    // === FIX: Sound trigger logic placed correctly in the single loop ===
     if (phase.name !== lastPhaseName) {
-        if (phase.name.includes('In')) {
-            audio.playInhaleSound();
-        } else if (phase.name.includes('Out')) {
-            audio.playExhaleSound();
-        }
+        audio.updateAudioPhase(phase); // This now handles muting for "Hold" automatically
         lastPhaseName = phase.name;
     }
-    // ================================================================
 
     ui.updatePhase(phase);
     ui.updateProgressBar(progress);
@@ -55,24 +45,21 @@ export function setTechnique(techniqueInstance) {
 }
 
 export function start() {
-    // === FIX: This is now the ONLY start function ===
     if (state.isRunning) return;
     state.isRunning = true;
     state.isPaused = false;
     state.lastTimestamp = 0;
-    lastPhaseName = ''; // Reset phase tracking
+    lastPhaseName = '';
 
     currentTechniqueInstance.start();
     ui.showRunningState();
 
-    // Trigger the sound for the very first phase immediately
+    audio.startAudio(); // Creates the new audio components
+
     const initialPhase = currentTechniqueInstance.getUIState().phase;
-    if (initialPhase.name.includes('In')) {
-        audio.playInhaleSound();
-    }
+    audio.updateAudioPhase(initialPhase); // Tell audio what the first phase is
     lastPhaseName = initialPhase.name;
     
-    // Start the single, unified loop
     if (!state.animationFrameId) {
         state.animationFrameId = requestAnimationFrame(loop);
     }
@@ -80,7 +67,10 @@ export function start() {
 
 export function stop() {
     if (!state.isRunning) return;
-    state.isRunning = false; // The loop function will see this and stop itself.
+    state.isRunning = false;
+    
+    audio.stopAudio(); // Correctly stops and cleans up audio
+    
     currentTechniqueInstance.stop();
     ui.resetToIdleState();
 }
@@ -88,6 +78,9 @@ export function stop() {
 export function pause() {
     if (!state.isRunning || state.isPaused) return;
     state.isPaused = true;
+    
+    audio.muteAudio(); // FIX: Mute audio on pause
+
     currentTechniqueInstance.pause();
     ui.showPausedState();
 }
@@ -95,8 +88,14 @@ export function pause() {
 export function resume() {
     if (!state.isRunning || !state.isPaused) return;
     state.isPaused = false;
+    
+    audio.unmuteAudio(); // FIX: Unmute audio on resume
+
     currentTechniqueInstance.resume();
     
-    const { phase } = currentTechniqueInstance.getUIState();
-    ui.showResumedState(phase);
+    // Re-sync the audio ramp to the current phase
+    const currentPhase = currentTechniqueInstance.getUIState().phase;
+    audio.updateAudioPhase(currentPhase);
+    
+    ui.showResumedState(currentPhase);
 }
