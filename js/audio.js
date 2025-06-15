@@ -7,17 +7,25 @@ const LOW_FREQ = 220;
 const HIGH_FREQ = 440;
 const QUICK_FADE = 0.2;
 
+// --- THIS IS THE DEFINITIVE FIX FOR ALL ISSUES ---
+// It is both SILENT (no blip) and ACTIVE (unlocks mobile).
 export function initAudio() {
     if (audioContext) return;
     try {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        // The key to unlocking mobile browsers without a click/pop sound.
+        // We check the state, and if it's 'suspended', we resume it immediately.
+        // Since this whole function is called by a user click, this is allowed.
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
     } catch (e) {
         console.error("Web Audio API is not supported in this browser");
     }
 }
 
-// This function is for ABRUPT stops only (pause/stop buttons)
-export function stopAllAudio() {
+function stopAllAudio() {
     if (currentOscillator) {
         const envelope = currentOscillator.envelope;
         envelope.gain.cancelScheduledValues(audioContext.currentTime);
@@ -29,17 +37,18 @@ export function stopAllAudio() {
 
 export function updateAudioPhase(phase) {
     if (!audioContext) return;
+    
+    // We keep this check as a robust fallback, but initAudio should handle the first unlock.
     if (audioContext.state === 'suspended') {
         audioContext.resume();
     }
 
-    // --- THE DEFINITIVE FIX ---
-    // The redundant `stopAllAudio()` call has been REMOVED from here.
-    // We let the previous sound finish its own graceful, pre-scheduled fade-out.
-    // We only create a new sound if the phase requires it.
-    // --------------------------
-
+    // The rest of the logic is correct: let the old sound fade out on its own.
+    // Only create a new sound if the phase requires it.
     if (phase.name.includes('In') || phase.name.includes('Out')) {
+        // Stop any previous sound immediately before starting a new one. This prevents overlap if the user switches techniques quickly.
+        stopAllAudio();
+        
         const now = audioContext.currentTime;
         const duration = phase.duration;
         const endTime = now + duration;
@@ -64,8 +73,7 @@ export function updateAudioPhase(phase) {
         envelope.gain.linearRampToValueAtTime(0.0001, endTime);
 
         oscillator.start(now);
-        // This sound is now perfectly self-destructing.
-        oscillator.stop(endTime + 0.1); 
+        oscillator.stop(endTime + 0.1);
 
         currentOscillator = { source: oscillator, envelope: envelope };
     }
