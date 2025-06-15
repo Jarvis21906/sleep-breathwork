@@ -2,47 +2,41 @@
 
 let audioContext;
 let oscillator;
-let masterGain;
-let envelope; // This is the crucial new part: a dedicated gain node for volume control
+let envelope; // A dedicated gain node for volume envelope control
 
-const LOW_FREQ = 220;
-const HIGH_FREQ = 440;
-const FADE_TIME = 0.5; // Smooth fade duration for all volume changes
+const LOW_FREQ = 220;  // A3 - A deep, calming note
+const HIGH_FREQ = 440; // A4 - An octave higher
+const QUICK_FADE = 0.3; // A short, smooth fade for pause/stop
 
 export function initAudio() {
     if (audioContext) return;
     try {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        masterGain = audioContext.createGain();
-        masterGain.gain.setValueAtTime(0.3, audioContext.currentTime);
-        masterGain.connect(audioContext.destination);
     } catch (e) {
         console.error("Web Audio API is not supported in this browser");
     }
 }
 
 export function startAudio() {
-    // FIX for "Second run doesn't work": Always create a fresh oscillator and envelope.
+    if (!audioContext) return;
+    // FIX for "Second run doesn't work": Clean up any previous instances
     if (oscillator) {
-        // If a previous oscillator exists, force stop it before creating a new one.
         stopAudio();
     }
     
-    if (!audioContext) return;
     if (audioContext.state === 'suspended') audioContext.resume();
 
-    // 1. Create the sound source (oscillator)
+    // Create the continuous sound source
     oscillator = audioContext.createOscillator();
     oscillator.type = 'sine';
     oscillator.frequency.setValueAtTime(LOW_FREQ, audioContext.currentTime);
 
-    // 2. Create the volume envelope
+    // Create the volume control envelope
     envelope = audioContext.createGain();
     envelope.gain.setValueAtTime(0, audioContext.currentTime); // Start silent
 
-    // 3. Connect the audio graph: oscillator -> envelope -> master volume -> speakers
-    oscillator.connect(envelope);
-    envelope.connect(masterGain);
+    // Connect the graph
+    oscillator.connect(envelope).connect(audioContext.destination);
     
     oscillator.start();
 }
@@ -50,42 +44,53 @@ export function startAudio() {
 export function stopAudio() {
     if (!envelope || !oscillator) return;
 
-    // Fade out the envelope, then stop the oscillator completely.
-    envelope.gain.linearRampToValueAtTime(0.0001, audioContext.currentTime + FADE_TIME);
-    oscillator.stop(audioContext.currentTime + FADE_TIME);
+    // Fade out quickly and then stop the source
+    envelope.gain.cancelScheduledValues(audioContext.currentTime);
+    envelope.gain.linearRampToValueAtTime(0.0001, audioContext.currentTime + QUICK_FADE);
+    oscillator.stop(audioContext.currentTime + QUICK_FADE);
     
-    // Mark as cleaned up
     oscillator = null;
     envelope = null;
 }
 
-// FIX for "Pause button" and "Hold sound" issues: Smoothly mute the sound
+// FIX for "Pause button doesn't stop sound"
 export function muteAudio() {
     if (!envelope) return;
-    envelope.gain.linearRampToValueAtTime(0.0001, audioContext.currentTime + FADE_TIME);
+    // Cancel any future scheduled ramps and fade out now
+    envelope.gain.cancelScheduledValues(audioContext.currentTime);
+    envelope.gain.linearRampToValueAtTime(0.0001, audioContext.currentTime + QUICK_FADE);
 }
 
-// FIX for "Pause button" and "Hold sound" issues: Smoothly unmute the sound
-export function unmuteAudio() {
-    if (!envelope) return;
-    envelope.gain.linearRampToValueAtTime(1, audioContext.currentTime + FADE_TIME);
-}
-
-// This function now correctly handles all phases
+// FIX for "Abrupt sound cutoff after inhale"
 export function updateAudioPhase(phase) {
-    if (!oscillator) return;
+    if (!oscillator || !envelope) return;
 
     const freqParam = oscillator.frequency;
+    const gainParam = envelope.gain;
     const now = audioContext.currentTime;
     const duration = phase.duration;
 
-    if (phase.name.includes('In')) {
-        unmuteAudio(); // Fade sound in
-        freqParam.linearRampToValueAtTime(HIGH_FREQ, now + duration);
-    } else if (phase.name.includes('Out')) {
-        unmuteAudio(); // Fade sound in
-        freqParam.linearRampToValueAtTime(LOW_FREQ, now + duration);
+    // Cancel any previously scheduled ramps to start fresh
+    freqParam.cancelScheduledValues(now);
+    gainParam.cancelScheduledValues(now);
+
+    if (phase.name.includes('In') || phase.name.includes('Out')) {
+        // --- This is the "breathing arc" logic ---
+        const isUp = phase.name.includes('In');
+        const peakVolume = 0.4;
+        const peakTime = now + (duration / 2);
+        const endTime = now + duration;
+
+        // Schedule pitch ramp for the full duration
+        freqParam.linearRampToValueAtTime(isUp ? HIGH_FREQ : LOW_FREQ, endTime);
+        
+        // Schedule volume to ramp UP to a peak, then DOWN to silence
+        gainParam.linearRampToValueAtTime(peakVolume, peakTime);
+        gainParam.linearRampToValueAtTime(0.0001, endTime);
+
     } else if (phase.name.includes('Hold')) {
-        muteAudio(); // Fade sound out for the hold phase
+        // For the hold phase, we ensure it's silent. The previous phase has already
+        // scheduled its own fade-out, but this is a safeguard.
+        gainParam.linearRampToValueAtTime(0.0001, now + QUICK_FADE);
     }
 }

@@ -29,7 +29,7 @@ function loop(timestamp) {
     const { phase, progress, cycleCount } = currentTechniqueInstance.getUIState();
 
     if (phase.name !== lastPhaseName) {
-        audio.updateAudioPhase(phase); // This now handles muting for "Hold" automatically
+        audio.updateAudioPhase(phase);
         lastPhaseName = phase.name;
     }
 
@@ -54,10 +54,10 @@ export function start() {
     currentTechniqueInstance.start();
     ui.showRunningState();
 
-    audio.startAudio(); // Creates the new audio components
+    audio.startAudio();
 
     const initialPhase = currentTechniqueInstance.getUIState().phase;
-    audio.updateAudioPhase(initialPhase); // Tell audio what the first phase is
+    audio.updateAudioPhase(initialPhase);
     lastPhaseName = initialPhase.name;
     
     if (!state.animationFrameId) {
@@ -69,7 +69,7 @@ export function stop() {
     if (!state.isRunning) return;
     state.isRunning = false;
     
-    audio.stopAudio(); // Correctly stops and cleans up audio
+    audio.stopAudio();
     
     currentTechniqueInstance.stop();
     ui.resetToIdleState();
@@ -79,7 +79,7 @@ export function pause() {
     if (!state.isRunning || state.isPaused) return;
     state.isPaused = true;
     
-    audio.muteAudio(); // FIX: Mute audio on pause
+    audio.muteAudio(); // Mute audio on pause
 
     currentTechniqueInstance.pause();
     ui.showPausedState();
@@ -89,11 +89,10 @@ export function resume() {
     if (!state.isRunning || !state.isPaused) return;
     state.isPaused = false;
     
-    audio.unmuteAudio(); // FIX: Unmute audio on resume
-
     currentTechniqueInstance.resume();
     
-    // Re-sync the audio ramp to the current phase
+    // FIX: When resuming, re-trigger the audio logic for the current phase.
+    // This will correctly make it silent for 'Hold' or start the arc for 'Inhale'/'Exhale'.
     const currentPhase = currentTechniqueInstance.getUIState().phase;
     audio.updateAudioPhase(currentPhase);
     
