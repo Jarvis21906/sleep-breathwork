@@ -1,78 +1,72 @@
 import { state } from './state.js';
-import { TECHNIQUES } from './config.js';
 import * as ui from './ui.js';
+
+let currentTechniqueInstance = null;
 
 function loop(timestamp) {
     if (!state.isRunning || state.isPaused) {
-        state.lastTimestamp = timestamp;
+        state.lastTimestamp = timestamp; // Keep track for accurate deltaTime on resume
+        state.animationFrameId = requestAnimationFrame(loop);
         return;
     }
     if (!state.lastTimestamp) state.lastTimestamp = timestamp;
 
     const deltaTime = (timestamp - state.lastTimestamp) / 1000;
     state.lastTimestamp = timestamp;
-    state.timeInPhase += deltaTime;
 
-    const technique = TECHNIQUES[state.currentTechnique];
-    const phase = technique.phases[state.currentPhaseIndex];
-    const totalCycleDuration = technique.phases.reduce((sum, p) => sum + p.duration, 0);
-    const timeElapsedInCycle = technique.phases.slice(0, state.currentPhaseIndex).reduce((sum, p) => sum + p.duration, 0) + state.timeInPhase;
+    // The engine tells the technique to update itself
+    currentTechniqueInstance.update(deltaTime);
 
-    ui.updateProgressBar((timeElapsedInCycle / totalCycleDuration) * 100);
-
-    if (state.timeInPhase >= phase.duration) {
-        state.timeInPhase = 0;
-        state.currentPhaseIndex++;
-
-        if (state.currentPhaseIndex >= technique.phases.length) {
-            state.currentPhaseIndex = 0;
-            state.cycleCount++;
-            ui.updateCycleCount(state.cycleCount);
-        }
-        ui.updatePhase(technique.phases[state.currentPhaseIndex]);
-    }
+    // The engine asks the technique for its current state
+    const { phase, progress, cycleCount } = currentTechniqueInstance.getUIState();
+    
+    // The engine tells the UI to render that state
+    ui.updatePhase(phase);
+    ui.updateProgressBar(progress);
+    ui.updateCycleCount(cycleCount);
 
     state.animationFrameId = requestAnimationFrame(loop);
+}
+
+export function setTechnique(techniqueInstance) {
+    currentTechniqueInstance = techniqueInstance;
 }
 
 export function start() {
     if (state.isRunning) return;
     state.isRunning = true;
     state.isPaused = false;
-    
-    ui.showRunningState();
-    ui.updateCycleCount(0);
-    
-    const initialPhase = TECHNIQUES[state.currentTechnique].phases[0];
-    ui.updatePhase(initialPhase);
+    state.lastTimestamp = 0;
 
-    state.animationFrameId = requestAnimationFrame(loop);
+    currentTechniqueInstance.start();
+    ui.showRunningState();
+    
+    // Start the main animation loop if it's not already running
+    if (!state.animationFrameId) {
+        state.animationFrameId = requestAnimationFrame(loop);
+    }
 }
 
 export function stop() {
+    if (!state.isRunning) return;
     state.isRunning = false;
-    if (state.animationFrameId) {
-        cancelAnimationFrame(state.animationFrameId);
-    }
-    state.cycleCount = 0;
-    state.currentPhaseIndex = 0;
-    state.timeInPhase = 0;
+    
+    currentTechniqueInstance.stop();
     ui.resetToIdleState();
 }
 
 export function pause() {
     if (!state.isRunning || state.isPaused) return;
     state.isPaused = true;
-    if (state.animationFrameId) {
-        cancelAnimationFrame(state.animationFrameId);
-    }
+    currentTechniqueInstance.pause();
     ui.showPausedState();
 }
 
 export function resume() {
     if (!state.isRunning || !state.isPaused) return;
     state.isPaused = false;
-    const currentPhase = TECHNIQUES[state.currentTechnique].phases[state.currentPhaseIndex];
-    ui.showResumedState(currentPhase);
-    state.animationFrameId = requestAnimationFrame(loop);
+    currentTechniqueInstance.resume();
+    
+    const { phase } = currentTechniqueInstance.getUIState();
+    ui.showResumedState(phase);
 }

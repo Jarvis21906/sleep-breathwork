@@ -1,5 +1,5 @@
 import { state, resetState } from './state.js';
-import { TECHNIQUES } from './config.js';
+import { techniques } from './techniques/index.js';
 import * as ui from './ui.js';
 import * as engine from './engine.js';
 import { initStarfield } from './animations.js';
@@ -8,17 +8,17 @@ function handleTechniqueChange(e) {
     const selectedKey = e.target.dataset.technique;
     if (selectedKey === state.currentTechnique) return;
     
-    state.currentTechnique = selectedKey;
-    
-    ui.setTechnique(selectedKey, TECHNIQUES[selectedKey].description);
-    
     if (state.isRunning) {
         engine.stop();
-        engine.start();
-    } else {
-        resetState(selectedKey);
-        ui.resetToIdleState();
     }
+    resetState(selectedKey);
+
+    const TechniqueClass = techniques[selectedKey];
+    const newTechniqueInstance = new TechniqueClass();
+    engine.setTechnique(newTechniqueInstance);
+    
+    ui.setTechnique(selectedKey, newTechniqueInstance.description);
+    ui.resetToIdleState();
 }
 
 // Initialize the application
@@ -31,10 +31,29 @@ function init() {
         ui.resumeBtn.addEventListener('click', engine.resume);
         ui.stopBtn.addEventListener('click', engine.stop);
 
-        // Initial UI setup
+        // =======================================================
+        // == THIS BLOCK CONTAINS THE FIX FOR THE DESCRIPTION ==
+        // =======================================================
         initStarfield();
+
+        // 1. Get the key for the initial technique
+        const initialKey = state.currentTechnique;
+        
+        // 2. Get the corresponding Class from our techniques map
+        const InitialTechniqueClass = techniques[initialKey];
+
+        // 3. Create an actual instance of the technique
+        const initialInstance = new InitialTechniqueClass();
+
+        // 4. Give this instance to the engine to manage
+        engine.setTechnique(initialInstance);
+        
+        // 5. Reset the UI to its idle state
         ui.resetToIdleState();
-        ui.setTechnique(state.currentTechnique, TECHNIQUES[state.currentTechnique].description);
+
+        // 6. Now, use the INSTANCE to get the description and update the UI
+        ui.setTechnique(initialKey, initialInstance.description);
+        // =======================================================
     });
 }
 
