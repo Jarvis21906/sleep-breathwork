@@ -22,10 +22,12 @@ body {
     font-family: var(--font-family);
     background: radial-gradient(ellipse at bottom, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
     color: var(--text-color);
+    /* CRITICAL FIX: Reverting to a natural-scrolling layout */
     display: flex;
     justify-content: center;
     align-items: flex-start;
     min-height: 100vh;
+    /* REMOVED overflow: hidden */
 }
 
 #starfield {
@@ -39,20 +41,18 @@ body {
 
 .app-container {
     width: 100%;
-    max-width: 500px;
-    padding: 1.5rem 2rem; /* CHANGED: Reduced top/bottom padding */
+    max-width: 480px; /* Sizing Adjustment */
+    margin: 2vh auto; /* Gives a small, consistent top/bottom margin */
     display: flex;
     flex-direction: column;
-    align-items: center;
+    padding: 1rem 1.5rem; /* Sizing Adjustment */
     text-align: center;
-    gap: 1.2rem; /* CHANGED: Further reduced gap between elements */
+    gap: 1rem; /* Sizing Adjustment */
     z-index: 1;
-    margin-top: 2vh;
-    margin-bottom: 2vh;
 }
 
 header h1 {
-    font-size: 2.2rem; /* CHANGED: Slightly smaller to save space */
+    font-size: 2rem; /* Sizing Adjustment */
     font-weight: 600;
     margin-bottom: 0.25rem;
 }
@@ -63,7 +63,7 @@ header p {
 }
 
 .technique-selector h2 {
-    font-size: 1rem;
+    font-size: 0.9rem; /* Sizing Adjustment */
     font-weight: 500;
     color: var(--text-color-dark);
     margin-bottom: 0.75rem;
@@ -72,17 +72,18 @@ header p {
 .technique-buttons {
     display: flex;
     justify-content: center;
-    gap: 0.75rem;
+    gap: 0.5rem; /* Sizing Adjustment */
     flex-wrap: wrap;
 }
 
 .technique-buttons button {
     font-family: inherit;
-    font-size: 0.9rem;
+    font-size: 0.85rem; /* Sizing Adjustment */
+    padding: 0.5rem 1rem; /* Sizing Adjustment */
+    /* ... other styles */
     color: var(--text-color);
     background: var(--component-bg);
     border: 1px solid var(--component-border);
-    padding: 0.6rem 1.2rem;
     border-radius: 99px;
     cursor: pointer;
     transition: all 0.2s ease-in-out;
@@ -104,34 +105,35 @@ header p {
 
 .technique-info {
     background: var(--component-bg);
-    border-radius: 15px;
-    padding: 1rem 1.5rem;
-    min-height: 70px;
+    border-radius: 12px;
+    padding: 0.8rem 1.2rem; /* Sizing Adjustment */
+    min-height: 65px; /* Sizing Adjustment */
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
-    margin-top: -0.5rem;
 }
 
 .technique-info p {
-    font-size: 0.9rem; /* CHANGED: Slightly smaller text */
+    font-size: 0.85rem; /* Sizing Adjustment */
     line-height: 1.5;
     color: var(--text-color-dark);
 }
 
 .breathing-area {
+    /* CRITICAL FIX: Sized to contain the largest animation */
     width: 100%;
-    height: 160px; /* CHANGED: Reduced height */
+    height: 190px; /* Base circle (120px) * 1.5 scale = 180px. 190px gives buffer. */
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 0.2rem 0; /* CHANGED: Reduced margin */
+    margin: 0;
 }
 
 #breathing-circle {
-    width: 140px; /* CHANGED: Slightly smaller circle */
-    height: 140px; /* CHANGED: Slightly smaller circle */
+    width: 120px; /* Sizing Adjustment */
+    height: 120px; /* Sizing Adjustment */
+    /* ... other styles */
     background: radial-gradient(circle, rgba(167, 119, 227, 0.1), rgba(167, 119, 227, 0));
     border: 1px solid var(--component-border);
     border-radius: 50%;
@@ -147,7 +149,7 @@ header p {
 }
 
 #phase-text {
-    font-size: 1.4rem;
+    font-size: 1.2rem; /* Sizing Adjustment */
     font-weight: 500;
 }
 
@@ -155,7 +157,7 @@ header p {
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 1.2rem; /* CHANGED: Reduced gap */
+    gap: 1rem; /* Sizing Adjustment */
 }
 
 .progress-container {
@@ -163,6 +165,7 @@ header p {
 }
 
 #cycle-counter {
+    font-size: 0.9rem; /* Sizing Adjustment */
     margin-bottom: 0.5rem;
     color: var(--text-color-dark);
 }
@@ -187,17 +190,18 @@ header p {
     display: flex;
     justify-content: center;
     gap: 1rem;
+    margin-top: -0.5rem;
 }
 
 .controls-container button {
     font-family: inherit;
-    font-size: 1rem;
+    font-size: 0.9rem; /* Sizing Adjustment */
     font-weight: 500;
     color: var(--text-color);
     background: var(--component-bg);
     border: 1px solid var(--component-border);
-    padding: 0.8rem 0;
-    width: 100px;
+    padding: 0.7rem 0; /* Sizing Adjustment */
+    width: 90px; /* Sizing Adjustment */
     border-radius: 99px;
     cursor: pointer;
     transition: all 0.2s ease-in-out;
@@ -211,7 +215,7 @@ header p {
 }
 
 .controls-container button#start-btn {
-     width: 120px;
+     width: 110px; /* Sizing Adjustment */
 }
 
 .controls-container button[disabled] {
@@ -223,6 +227,7 @@ header p {
     display: none !important;
 }
 
+/* The mobile styles are already quite compact, so they need fewer changes */
 @media (max-width: 600px) {
     .app-container {
         padding: 1rem;
@@ -230,15 +235,5 @@ header p {
     }
     header h1 {
         font-size: 2rem;
-    }
-    .breathing-area {
-        height: 150px;
-    }
-    #breathing-circle {
-        width: 120px;
-        height: 120px;
-    }
-    #phase-text {
-        font-size: 1.2rem;
     }
 }
