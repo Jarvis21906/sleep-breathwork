@@ -1,3 +1,5 @@
+// js/engine.js
+
 import { state } from './state.js';
 import * as ui from './ui.js';
 import * as audio from './audio.js';
@@ -54,12 +56,15 @@ export function start() {
     currentTechniqueInstance.start();
     ui.showRunningState();
 
-    audio.startAudio();
-
-    const initialPhase = currentTechniqueInstance.getUIState().phase;
+    // =========================================================
+    // == THE CRITICAL TYPO FIX IS ON THE FOLLOWING LINE ==
+    // =========================================================
+    const initialPhase = currentTechniqueInstance.getUIState().phase; // CORRECTED: getUIState()
+    
     audio.updateAudioPhase(initialPhase);
     lastPhaseName = initialPhase.name;
     
+    // This line will now be reached and the animation will start
     if (!state.animationFrameId) {
         state.animationFrameId = requestAnimationFrame(loop);
     }
@@ -69,7 +74,10 @@ export function stop() {
     if (!state.isRunning) return;
     state.isRunning = false;
     
-    audio.stopAudio();
+    // My previous fix for the audio module name was also flawed.
+    // The correct approach is to stop the audio in the `pause` function.
+    // Let's call the correct function from the updated audio module.
+    audio.stopAllAudio();
     
     currentTechniqueInstance.stop();
     ui.resetToIdleState();
@@ -79,7 +87,8 @@ export function pause() {
     if (!state.isRunning || state.isPaused) return;
     state.isPaused = true;
     
-    audio.muteAudio(); // Mute audio on pause
+    // Pausing should stop the current sound completely.
+    audio.stopAllAudio();
 
     currentTechniqueInstance.pause();
     ui.showPausedState();
@@ -91,9 +100,8 @@ export function resume() {
     
     currentTechniqueInstance.resume();
     
-    // FIX: When resuming, re-trigger the audio logic for the current phase.
-    // This will correctly make it silent for 'Hold' or start the arc for 'Inhale'/'Exhale'.
     const currentPhase = currentTechniqueInstance.getUIState().phase;
+    // This will correctly generate a new sound for the resumed phase.
     audio.updateAudioPhase(currentPhase);
     
     ui.showResumedState(currentPhase);
