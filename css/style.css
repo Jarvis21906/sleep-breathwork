@@ -1,0 +1,243 @@
+:root {
+    --bg-gradient-start: #0f0c29;
+    --bg-gradient-mid: #24243e;
+    --bg-gradient-end: #0c0c1d;
+    --text-color: #e0e0e0;
+    --text-color-dark: #a0a0b0;
+    --primary-glow: #a777e3;
+    --component-bg: rgba(44, 42, 73, 0.35);
+    --component-border: rgba(167, 119, 227, 0.4);
+    --component-active-bg: #4d447a;
+    --component-active-border: #a777e3;
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family);
+    background: radial-gradient(ellipse at bottom, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+    color: var(--text-color);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* CHANGED: Ensures content starts from the top */
+    min-height: 100vh;
+    /* REMOVED overflow:hidden to allow scrolling */
+}
+
+#starfield {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 500px;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 2rem;
+    z-index: 1;
+    margin-top: 4vh;      /* ADDED */
+    margin-bottom: 4vh;   /* ADDED */
+}
+
+header h1 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+header p {
+    font-size: 1.1rem;
+    color: var(--text-color-dark);
+}
+
+.technique-selector h2 {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-color-dark);
+    margin-bottom: 1rem;
+}
+
+.technique-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.technique-buttons button {
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    background: var(--component-bg);
+    border: 1px solid var(--component-border);
+    padding: 0.6rem 1.2rem;
+    border-radius: 99px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+.technique-buttons button:hover {
+    border-color: var(--component-active-border);
+    color: white;
+}
+
+.technique-buttons button.active {
+    background: var(--component-active-bg);
+    border-color: var(--component-active-border);
+    color: white;
+    box-shadow: 0 0 15px rgba(167, 119, 227, 0.3);
+}
+
+.technique-info {
+    background: var(--component-bg);
+    border-radius: 15px;
+    padding: 1rem 1.5rem;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.technique-info p {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--text-color-dark);
+}
+
+.breathing-area {
+    width: 100%;
+    height: 200px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 1rem 0;
+}
+
+#breathing-circle {
+    width: 150px;
+    height: 150px;
+    background: radial-gradient(circle, rgba(167, 119, 227, 0.1), rgba(167, 119, 227, 0));
+    border: 1px solid var(--component-border);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 4s ease-in-out, box-shadow 1s ease-in-out;
+    transform: scale(1);
+}
+
+#breathing-circle.animating {
+    box-shadow: 0 0 40px rgba(167, 119, 227, 0.3), 0 0 80px rgba(167, 119, 227, 0.2);
+}
+
+#phase-text {
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+
+.progress-controls {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.progress-container {
+    width: 100%;
+}
+
+#cycle-counter {
+    margin-bottom: 0.5rem;
+    color: var(--text-color-dark);
+}
+
+.progress-bar-wrapper {
+    width: 100%;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+#progress-bar {
+    width: 0%;
+    height: 100%;
+    background: var(--primary-glow);
+    border-radius: 2px;
+    transition: width 0.1s linear;
+}
+
+.controls-container {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.controls-container button {
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-color);
+    background: var(--component-bg);
+    border: 1px solid var(--component-border);
+    padding: 0.8rem 0;
+    width: 100px;
+    border-radius: 99px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+.controls-container button:hover:not([disabled]) {
+    border-color: var(--component-active-border);
+    color: white;
+}
+
+.controls-container button#start-btn {
+     width: 120px;
+}
+
+.controls-container button[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.hidden {
+    display: none !important;
+}
+
+@media (max-width: 600px) {
+    .app-container {
+        padding: 1rem;
+        gap: 1.5rem;
+    }
+    header h1 {
+        font-size: 2rem;
+    }
+    .breathing-area {
+        height: 150px;
+    }
+    #breathing-circle {
+        width: 120px;
+        height: 120px;
+    }
+    #phase-text {
+        font-size: 1.2rem;
+    }
+}

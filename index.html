@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sleep Breathwork</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <canvas id="starfield"></canvas>
+
+    <div class="app-container">
+        <header>
+            <h1>Sleep Breathwork</h1>
+            <p>Calm your mind, prepare for rest</p>
+        </header>
+
+        <section class="technique-selector">
+            <h2>Choose Your Technique:</h2>
+            <div class="technique-buttons">
+                <button data-technique="4-7-8" class="active">4-7-8 Relaxing</button>
+                <button data-technique="box">Box Breathing</button>
+                <button data-technique="triangle">Triangle Breathing</button>
+            </div>
+        </section>
+
+        <section class="technique-info">
+            <p id="technique-description">Perfect for sleep preparation. Exhale longer than inhale to activate your parasympathetic nervous system and promote deep relaxation.</p>
+        </section>
+
+        <main class="breathing-area">
+            <div id="breathing-circle">
+                <span id="phase-text"></span>
+            </div>
+        </main>
+
+        <footer class="progress-controls">
+            <div class="progress-container">
+                 <span id="cycle-counter">Cycles: 0</span>
+                 <div class="progress-bar-wrapper">
+                    <div id="progress-bar"></div>
+                 </div>
+            </div>
+            <div id="controls" class="controls-container">
+                <button id="start-btn">Start</button>
+                <button id="resume-btn" class="hidden" disabled>Resume</button>
+                <button id="pause-btn" class="hidden">Pause</button>
+                <button id="stop-btn" class="hidden">Stop</button>
+            </div>
+        </footer>
+    </div>
+
+    <script src="js/main.js" type="module"></script>
+</body>
+</html>
