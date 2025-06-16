@@ -1,3 +1,5 @@
+// js/animations.js
+
 const starfield = document.getElementById('starfield');
 const ctx = starfield.getContext('2d');
 let stars = [];

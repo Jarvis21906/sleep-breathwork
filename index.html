@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sleep Breathwork</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
+    <!-- FIX for iOS Audio: A silent, muted audio element to "prime" the audio session. -->
+    <audio id="silent-unlock-audio" muted playsinline></audio>
 
     <canvas id="starfield"></canvas>
 
@@ -26,12 +28,9 @@
             </div>
         </section>
 
-        <!-- ============================================= -->
-        <!-- == THIS IS THE SECTION THAT WAS RE-ADDED == -->
         <section class="technique-info">
             <p id="technique-description"></p>
         </section>
-        <!-- ============================================= -->
 
         <main class="breathing-area">
             <div id="breathing-circle">

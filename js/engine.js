@@ -15,13 +15,11 @@ function loop(timestamp) {
         }
         return;
     }
-
     if (state.isPaused) {
         state.lastTimestamp = timestamp;
         state.animationFrameId = requestAnimationFrame(loop);
         return;
     }
-
     if (!state.lastTimestamp) state.lastTimestamp = timestamp;
 
     const deltaTime = (timestamp - state.lastTimestamp) / 1000;
@@ -38,6 +36,7 @@ function loop(timestamp) {
     ui.updatePhase(phase);
     ui.updateProgressBar(progress);
     ui.updateCycleCount(cycleCount);
+    ui.updateGlow(phase, progress);
 
     state.animationFrameId = requestAnimationFrame(loop);
 }
@@ -55,16 +54,12 @@ export function start() {
 
     currentTechniqueInstance.start();
     ui.showRunningState();
+    audio.startAudio();
 
-    // =========================================================
-    // == THE CRITICAL TYPO FIX IS ON THE FOLLOWING LINE ==
-    // =========================================================
-    const initialPhase = currentTechniqueInstance.getUIState().phase; // CORRECTED: getUIState()
-    
+    const initialPhase = currentTechniqueInstance.getUIState().phase;
     audio.updateAudioPhase(initialPhase);
     lastPhaseName = initialPhase.name;
     
-    // This line will now be reached and the animation will start
     if (!state.animationFrameId) {
         state.animationFrameId = requestAnimationFrame(loop);
     }
@@ -73,12 +68,7 @@ export function start() {
 export function stop() {
     if (!state.isRunning) return;
     state.isRunning = false;
-    
-    // My previous fix for the audio module name was also flawed.
-    // The correct approach is to stop the audio in the `pause` function.
-    // Let's call the correct function from the updated audio module.
-    audio.stopAllAudio();
-    
+    audio.stopAudio();
     currentTechniqueInstance.stop();
     ui.resetToIdleState();
 }
@@ -86,10 +76,7 @@ export function stop() {
 export function pause() {
     if (!state.isRunning || state.isPaused) return;
     state.isPaused = true;
-    
-    // Pausing should stop the current sound completely.
-    audio.stopAllAudio();
-
+    audio.muteAudio();
     currentTechniqueInstance.pause();
     ui.showPausedState();
 }
@@ -97,12 +84,11 @@ export function pause() {
 export function resume() {
     if (!state.isRunning || !state.isPaused) return;
     state.isPaused = false;
-    
     currentTechniqueInstance.resume();
     
     const currentPhase = currentTechniqueInstance.getUIState().phase;
-    // This will correctly generate a new sound for the resumed phase.
-    audio.updateAudioPhase(currentPhase);
+    const elapsedTime = currentTechniqueInstance.timeInPhase;
+    audio.resumeAudio(currentPhase, elapsedTime);
     
     ui.showResumedState(currentPhase);
 }

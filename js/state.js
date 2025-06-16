@@ -1,3 +1,5 @@
+// js/state.js
+
 export let state = {
     currentTechnique: '4-7-8',
     isRunning: false,

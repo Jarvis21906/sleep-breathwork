@@ -1,4 +1,5 @@
-// Export DOM element references
+// js/ui.js
+
 export const breathingCircle = document.getElementById('breathing-circle');
 export const phaseText = document.getElementById('phase-text');
 export const cycleCounter = document.getElementById('cycle-counter');
@@ -10,8 +11,23 @@ export const resumeBtn = document.getElementById('resume-btn');
 export const pauseBtn = document.getElementById('pause-btn');
 export const stopBtn = document.getElementById('stop-btn');
 
-// UI Update Functions
+export function updateGlow(phase, progress) {
+    if (!breathingCircle) return;
+
+    if (phase.name.includes('In') || phase.name.includes('Out')) {
+        const glowProgress = progress / 100;
+        const maxBlur = 40;
+        const maxAlpha = 0.3;
+        const currentBlur = maxBlur * glowProgress;
+        const currentAlpha = maxAlpha * glowProgress;
+        breathingCircle.style.boxShadow = `0 0 ${currentBlur}px rgba(167, 119, 227, ${currentAlpha})`;
+    } else {
+        breathingCircle.style.boxShadow = 'none';
+    }
+}
+
 export function updatePhase(phase) {
+    breathingCircle.style.transition = 'transform 4s ease-in-out';
     phaseText.textContent = phase.name;
     breathingCircle.style.transitionDuration = `${phase.duration}s`;
 
@@ -49,6 +65,10 @@ export function showRunningState() {
 }
 
 export function showPausedState() {
+    const currentTransform = getComputedStyle(breathingCircle).transform;
+    breathingCircle.style.transition = 'none';
+    breathingCircle.style.transform = currentTransform;
+
     phaseText.textContent = 'Paused';
     pauseBtn.disabled = true;
     resumeBtn.disabled = false;
@@ -63,6 +83,13 @@ export function showResumedState(phase) {
 }
 
 export function resetToIdleState() {
+    breathingCircle.style.boxShadow = 'none';
+    breathingCircle.style.transition = 'none';
+    breathingCircle.style.transform = 'scale(1)';
+    setTimeout(() => {
+        breathingCircle.style.transition = 'transform 4s ease-in-out';
+    }, 20);
+
     startBtn.classList.remove('hidden');
     pauseBtn.classList.add('hidden');
     resumeBtn.classList.add('hidden');
@@ -71,7 +98,5 @@ export function resetToIdleState() {
     phaseText.textContent = '';
     updateCycleCount(0);
     updateProgressBar(0);
-    breathingCircle.style.transform = 'scale(1)';
-    breathingCircle.style.transitionDuration = '4s';
     breathingCircle.classList.remove('animating');
 }

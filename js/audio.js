@@ -1,80 +1,115 @@
 // js/audio.js
 
 let audioContext;
-let currentOscillator = null;
+let oscillator;
+let envelope;
 
 const LOW_FREQ = 220;
 const HIGH_FREQ = 440;
-const QUICK_FADE = 0.2;
+const PEAK_VOLUME = 0.4;
+const QUICK_FADE = 0.3;
 
-// --- THIS IS THE DEFINITIVE FIX FOR ALL ISSUES ---
-// It is both SILENT (no blip) and ACTIVE (unlocks mobile).
 export function initAudio() {
-    if (audioContext) return;
+    if (audioContext) {
+        if (audioContext.state === 'suspended') audioContext.resume();
+        return;
+    }
     try {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-        // The key to unlocking mobile browsers without a click/pop sound.
-        // We check the state, and if it's 'suspended', we resume it immediately.
-        // Since this whole function is called by a user click, this is allowed.
-        if (audioContext.state === 'suspended') {
-            audioContext.resume();
-        }
-    } catch (e) {
-        console.error("Web Audio API is not supported in this browser");
-    }
+    } catch (e) { console.error("Web Audio API is not supported in this browser"); }
 }
 
-function stopAllAudio() {
-    if (currentOscillator) {
-        const envelope = currentOscillator.envelope;
-        envelope.gain.cancelScheduledValues(audioContext.currentTime);
-        envelope.gain.linearRampToValueAtTime(0.0001, audioContext.currentTime + QUICK_FADE);
-        currentOscillator.source.stop(audioContext.currentTime + QUICK_FADE);
-        currentOscillator = null;
-    }
+export function startAudio() {
+    if (!audioContext) return;
+    if (audioContext.state === 'suspended') audioContext.resume();
+    if (oscillator) stopAudio();
+
+    oscillator = audioContext.createOscillator();
+    oscillator.type = 'sine';
+    envelope = audioContext.createGain();
+    
+    oscillator.connect(envelope).connect(audioContext.destination);
+    
+    envelope.gain.setValueAtTime(0, audioContext.currentTime);
+    oscillator.frequency.setValueAtTime(LOW_FREQ, audioContext.currentTime);
+    oscillator.start();
+}
+
+export function stopAudio() {
+    if (!envelope || !oscillator) return;
+    const now = audioContext.currentTime;
+    envelope.gain.cancelScheduledValues(now);
+    envelope.gain.linearRampToValueAtTime(0.0001, now + QUICK_FADE);
+    oscillator.stop(now + QUICK_FADE);
+    oscillator.disconnect();
+    envelope.disconnect();
+    oscillator = null;
+    envelope = null;
+}
+
+export function muteAudio() {
+    if (!envelope) return;
+    const now = audioContext.currentTime;
+    envelope.gain.cancelScheduledValues(now);
+    envelope.gain.linearRampToValueAtTime(0.0001, now + QUICK_FADE);
 }
 
 export function updateAudioPhase(phase) {
-    if (!audioContext) return;
+    if (!oscillator || !envelope) return;
+
+    const freqParam = oscillator.frequency;
+    const gainParam = envelope.gain;
+    const now = audioContext.currentTime;
     
-    // We keep this check as a robust fallback, but initAudio should handle the first unlock.
-    if (audioContext.state === 'suspended') {
-        audioContext.resume();
-    }
+    freqParam.cancelScheduledValues(now);
+    gainParam.cancelScheduledValues(now);
 
-    // The rest of the logic is correct: let the old sound fade out on its own.
-    // Only create a new sound if the phase requires it.
     if (phase.name.includes('In') || phase.name.includes('Out')) {
-        // Stop any previous sound immediately before starting a new one. This prevents overlap if the user switches techniques quickly.
-        stopAllAudio();
-        
-        const now = audioContext.currentTime;
-        const duration = phase.duration;
-        const endTime = now + duration;
-
-        const oscillator = audioContext.createOscillator();
-        const envelope = audioContext.createGain();
-        
-        oscillator.type = 'sine';
-        oscillator.connect(envelope).connect(audioContext.destination);
-        
         const isUp = phase.name.includes('In');
-        const peakVolume = 0.4;
-        const peakTime = now + (duration / 2);
+        const startFreq = isUp ? LOW_FREQ : HIGH_FREQ;
+        const endFreq = isUp ? HIGH_FREQ : LOW_FREQ;
+
+        gainParam.setValueAtTime(0.0001, now);
+        gainParam.linearRampToValueAtTime(PEAK_VOLUME, now + phase.duration);
+        freqParam.setValueAtTime(startFreq, now);
+        freqParam.linearRampToValueAtTime(endFreq, now + phase.duration);
+
+    } else if (phase.name.includes('Hold')) {
+        muteAudio();
+    }
+}
+
+export function resumeAudio(phase, elapsedTime) {
+    if (!oscillator || !envelope) return;
+
+    const freqParam = oscillator.frequency;
+    const gainParam = envelope.gain;
+    const now = audioContext.currentTime;
+    
+    freqParam.cancelScheduledValues(now);
+    gainParam.cancelScheduledValues(now);
+
+    if (phase.name.includes('In') || phase.name.includes('Out')) {
+        const totalDuration = phase.duration;
+        let remainingDuration = totalDuration - elapsedTime;
+        if (remainingDuration < 0) remainingDuration = 0;
+
+        const progress = elapsedTime / totalDuration;
+        const isUp = phase.name.includes('In');
+        
         const startFreq = isUp ? LOW_FREQ : HIGH_FREQ;
         const endFreq = isUp ? HIGH_FREQ : LOW_FREQ;
         
-        oscillator.frequency.setValueAtTime(startFreq, now);
-        oscillator.frequency.linearRampToValueAtTime(endFreq, endTime);
+        const currentFreq = startFreq + (endFreq - startFreq) * progress;
+        const currentVolume = PEAK_VOLUME * progress;
+
+        gainParam.setValueAtTime(currentVolume, now);
+        freqParam.setValueAtTime(currentFreq, now);
+
+        gainParam.linearRampToValueAtTime(PEAK_VOLUME, now + remainingDuration);
+        freqParam.linearRampToValueAtTime(endFreq, now + remainingDuration);
         
-        envelope.gain.setValueAtTime(0.0001, now);
-        envelope.gain.linearRampToValueAtTime(peakVolume, peakTime);
-        envelope.gain.linearRampToValueAtTime(0.0001, endTime);
-
-        oscillator.start(now);
-        oscillator.stop(endTime + 0.1);
-
-        currentOscillator = { source: oscillator, envelope: envelope };
+    } else if (phase.name.includes('Hold')) {
+        muteAudio();
     }
 }
